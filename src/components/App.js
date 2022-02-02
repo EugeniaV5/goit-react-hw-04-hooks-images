@@ -1,4 +1,5 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
+
 import './App.css';
 import Searchbar from './Searchbar/Searchbar';
 import Modal from './Modal/Modal';
@@ -11,112 +12,86 @@ import { Circles } from 'react-loader-spinner';
 
 // import { ToastContainer } from 'react-toastify';
 
-class App extends Component {
-  state = {
-    searchQuery: '',
-    page: 1,
-    isLoading: false,
-    images: [],
-    showModal: false,
-    fullSizeImg: '',
-    isEndOfArray: false,
+export default function App() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [images, setImages] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [fullSizeImg, setFullSizeImg] = useState('');
+  const [isEndOfArray, setIsEndOfArray] = useState(false);
+
+  const handleFormSubmit = searchQuery => {
+    setImages([]);
+    setSearchQuery(searchQuery);
+    setPage(1);
   };
 
-  handleFormSubmit = searchQuery => {
-    this.setState({ images: [], searchQuery, page: 1 });
-  };
+  const handleLoadMore = () => setPage(page => page + 1);
 
-  //   handleLoadMore = () => {
-  //     this.setState(prevState => ({ page: prevState.page + 1 }));
-  //   };
-
-  componentDidUpdate(prevProps, prevState) {
-    const prevQuery = prevState.searchQuery;
-    const nextQuery = this.state.searchQuery;
-
-    if (prevQuery !== nextQuery) {
-      this.fetchImages();
+  useEffect(() => {
+    if (!searchQuery) {
+      return;
     }
-    // if (prevQuery === nextQuery) {
-    //   this.setState(prevState => ({ page: prevState.page + 1 }));
-    //   this.fetchImages();
-    // }
-  }
+    fetchImages();
+  }, [page, searchQuery]);
 
-  fetchImages = async () => {
+  const fetchImages = async () => {
     try {
-      this.setState({ isLoading: true });
-      const { searchQuery, page } = this.state;
+      setIsLoading(true);
       const { data } = await getImages(searchQuery, page);
       if (data.hits.length === 0) {
         alert(
           'Sorry, there are no images matching your search query. Please try again',
         );
-        this.setState({ isLoading: false });
+        setIsLoading(false);
         return;
       }
-      if (this.state.page > data.totalHits / 12) {
+      if (page > data.totalHits / 12) {
         alert('We are sorry, but you have reached the end of search results.');
-        this.setState({ isEndOfArray: true, isLoading: false });
+        setIsLoading(false);
+        setIsEndOfArray(true);
         return;
       }
-      this.setState(prevState => ({
-        isLoading: false,
-        images: [...prevState.images, ...data.hits],
-        page: prevState.page + 1,
-      }));
+      setIsLoading(false);
+      setImages(state => [...state, ...data.hits]);
     } catch (error) {
       console.log(error);
     }
   };
 
-  openModal = largeImageURL => {
-    this.setState({
-      showModal: true,
-      fullSizeImg: largeImageURL,
-    });
+  const openModal = largeImageURL => {
+    setShowModal(true);
+    setFullSizeImg(largeImageURL);
   };
 
-  closeModal = () => {
-    this.setState({ showModal: false, fullSizeImg: '' });
+  const closeModal = () => {
+    setShowModal(false);
+    setFullSizeImg('');
   };
 
-  render() {
-    const {
-      searchQuery,
-      images,
-      isLoading,
-      fullSizeImg,
-      showModal,
-      isEndOfArray,
-    } = this.state;
-    return (
-      <div className="App">
-        <Searchbar onSubmit={this.handleFormSubmit} />
-        <ImageGallery images={images} onImageClick={this.openModal} />
-        {isLoading && (
-          <div className="Loader">
-            <Circles
-              color="#f07416"
-              arialLabel="loading-indicator"
-              height={80}
-              width={80}
-            />
-          </div>
-        )}
-        {images.length !== 0 && !isEndOfArray && (
-          <Button onLoadMoreClick={this.fetchImages} />
-        )}
-        {showModal && (
-          <Modal onClose={this.closeModal}>
-            <img src={fullSizeImg} alt={searchQuery} />
-          </Modal>
-        )}
+  return (
+    <div className="App">
+      <Searchbar onSubmit={handleFormSubmit} />
+      <ImageGallery images={images} onImageClick={openModal} />
+      {isLoading && (
+        <div className="Loader">
+          <Circles
+            color="#f07416"
+            arialLabel="loading-indicator"
+            height={80}
+            width={80}
+          />
+        </div>
+      )}
+      {images.length !== 0 && !isEndOfArray && (
+        <Button onLoadMoreClick={handleLoadMore} />
+      )}
+      {showModal && (
+        <Modal onClose={closeModal} largeImage={fullSizeImg}></Modal>
+      )}
 
-        {/* <ToastContainer autoClose={3000} /> */}
-      </div>
-    );
-  }
+      {/* <ToastContainer autoClose={3000} /> */}
+    </div>
+  );
 }
-
-export default App;
